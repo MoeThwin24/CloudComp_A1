@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Main Page</title>
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.4/jquery.min.js"></script>
+    </head>
+    <body>
+        <h2>Welcome, <span id="username"></span>!</h2>
+        <a href="login.html">Logout</a>
+
+        <hr>
+
+        <h3>Your Subscription</h3>
+        <div id="subscription-area">
+
+        </div>
+
+        <h3>Query Music</h3>
+        <form id="queryForm">
+            <label>Title:</label><input type="text" id="title"><br>
+            <label>Year:</label><input type="text" id="year"><br>
+            <label>Artist:</label><input type="text" id="artist"><br>
+            <label>Album:</label><input type="text" id="album"><br>
+            <button type="submit">Query</button>
+        </form>
+        <div id="query-result"></div>
+
+        <script>
+            const subURL = "";
+            const removeURL = "";
+            const queryURL = "";
+            const subscribeURL = "";
+
+            let userEmail = "";
+            let userName = "";
+
+            document.addEventListener("DOMContentLoaded", function () {
+                userName = sessionStorage.getItem("user_name");
+                userEmail = sessionStorage.getItem("email");
+
+                if (!userName || !userEmail) {
+                    window.location.href = "index.html";
+                    return;
+                }
+
+                document.getElementById("username").textContent = userName;
+                loadSubscriptions();
+            });
+            
+            //function loadMainPage(){}
+
+            function loadSubscriptions(){
+                $.ajax({
+                    url: subURL,
+                    type: "POST",
+                    contentType: "application/json",
+                    data: JSON.stringify({email: userEmail}),
+                    success: function(response){
+                        const data = typeof response === 'string' ? JSON.parse(response): response;
+                        const subs = data.subscriptions || [];
+                        const container = $("#subscription-area");
+                        container.empty();
+
+                        if (subs.length === 0){
+                            container.append("<p>No subscriptions yet.<p>");
+                                return;
+                        }
+
+                        subs.forEach(item =>{
+                            const block = `
+                                <div style="margin-bottom:20px">
+                                    <b>${item.title}</b> by ${item.artist} (${item.album}, ${item.year})<br>
+                                    <img src="${item.img_url}" width="100"><br>
+                                    <button onclick="removeSubcription('${item.title}', '${item.artist}')">Remove</button>
+                                </div>
+                                `;
+                            container.append(block);
+                        });
+                    }
+                });
+            }
+
+            function removeSubcription(title, artist){
+                $.ajax({
+                    url: removeURL,
+                    type: "POST",
+                    contentType: "application/json",
+                    data: JSON.stringify({email: userEmail, title: title, artist: artist}),
+                    success: function(){
+                        loadSubscriptions();
+                    }
+
+                });
+            }
+
+            $("#queryForm").submit(function (e) {
+        e.preventDefault();
+
+        const queryData = {
+          title: $("#title").val(),
+          year: $("#year").val(),
+          artist: $("#artist").val(),
+          album: $("#album").val()
+        };
+
+        if (!queryData.title && !queryData.year && !queryData.artist && !queryData.album) {
+          alert("Please fill at least one field to query.");
+          return;
+        }
+
+        $.ajax({
+          url: queryURL,
+          type: "POST",
+          contentType: "application/json",
+          data: JSON.stringify(queryData),
+          success: function (response) {
+            const data = typeof response === 'string' ? JSON.parse(response) : response;
+            const results = data.results || [];
+            const container = $("#query-result");
+            container.empty();
+
+            if (results.length === 0) {
+              container.append("<p>No result is retrieved. Please query again.</p>");
+              return;
+            }
+
+            results.forEach(item => {
+              const block = `
+                <div style="margin-bottom:20px">
+                  <b>${item.title}</b> by ${item.artist} (${item.album}, ${item.year})<br>
+                  <img src="${item.image_url}" width="100"><br>
+                  <button onclick="subscribe('${item.title}', '${item.artist}', '${item.album}', '${item.year}', '${item.image_url}')">Subscribe</button>
+                </div>
+              `;
+              container.append(block);
+            });
+          }
+        });
+      });
+
+            
+ 
+
+// ✅ 5.3.2 Subscribe to a song
+function subscribe(title, artist, album, year, image_url) {
+  $.ajax({
+    url: subscribeURL,
+    type: "POST",
+    contentType: "application/json",
+    data: JSON.stringify({
+      email: userEmail,
+      title, artist, album, year,
+      image_url
+    }),
+    success: function() {
+      loadSubscriptions(); // Refresh after subscribing
+    }
+  });
+}
+
+        </script>
+    </body>
+</html>
